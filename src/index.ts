@@ -3,7 +3,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { IUserInfo } from "./interfaces/user.interface";
 import { v4 as uuidv4 } from "uuid";
 import { CustomWebSocket } from "./interfaces/customWebsocket.interface";
-import { IRoomCreated, IRoomJoined, ISocketResponse } from "./interfaces/response";
+import { IChatResponse, IRoomCreated, IRoomJoined, ISocketResponse } from "./interfaces/response";
 
 const app = express();
 const httpServer = app.listen(8080)
@@ -71,10 +71,57 @@ wss.on("connection", function connection(ws: CustomWebSocket) {
                 ws.send(JSON.stringify(response));
             } else if (res.type == "chat") {
                 //broadcast the message
+                const roomId = ws.roomId;
+
+                if (!roomId) {
+                    const response: ISocketResponse<null> = {
+                        type: "error",
+                        data: null,
+                        message: "You are not in a room.",
+                    };
+                    ws.send(JSON.stringify(response));
+                    return;
+                }
+
+
+                const room: Set<CustomWebSocket> | undefined = rooms.get(roomId ?? "")
+                if (!room) {
+                    const response: ISocketResponse<null> = {
+                        type: "error",
+                        data: null,
+                        message: "Invalid Room Id.",
+                        error: "Provide a valid Room Id."
+                    }
+                    ws.send(JSON.stringify(response));
+                    return;
+                }
+                if (!res.message) {
+                    const response: ISocketResponse<null> = {
+                        type: "error",
+                        data: null,
+                        message: "No message provided.",
+                        error: "Message content is empty."
+                    }
+                    ws.send(JSON.stringify(response));
+                    return;
+                }
+
+                room.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        const chatResponse: ISocketResponse<IChatResponse> = {
+                            type: "chat",
+                            data: {
+                                message: res.message ?? "",
+                                sender: res.username
+                            },
+                            message: "New Message"
+                        }
+                        client.send(JSON.stringify(chatResponse));
+                    }
+                })
             }
         } catch (err) {
             console.log("not a valid json")
         }
     })
-    ws.send("Hi")
 })

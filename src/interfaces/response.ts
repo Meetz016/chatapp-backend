@@ -14,3 +14,8 @@ export interface IRoomCreated {
 export interface IRoomJoined {
     roomId: string,
 }
+
+export interface IChatResponse {
+    sender: string,
+    message: string
+}
