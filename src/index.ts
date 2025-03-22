@@ -122,6 +122,13 @@ wss.on("connection", function connection(ws: CustomWebSocket) {
             }
         } catch (err) {
             console.log("not a valid json")
+            ws.send(JSON.stringify({
+                type: "error",
+                data: null,
+                message: "Invalid JSON payload.",
+                error: "Message format is incorrect."
+            }));
+
         }
     })
 })
