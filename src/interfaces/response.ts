@@ -9,3 +9,8 @@ export interface ISocketResponse<T> {
 export interface IRoomCreated {
     roomId: string
 }
+
+//doing this because maybe in future we need to send more things when user joins room 
+export interface IRoomJoined {
+    roomId: string,
+}

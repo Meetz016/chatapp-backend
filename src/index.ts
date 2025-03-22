@@ -3,7 +3,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { IUserInfo } from "./interfaces/user.interface";
 import { v4 as uuidv4 } from "uuid";
 import { CustomWebSocket } from "./interfaces/customWebsocket.interface";
-import { IRoomCreated, ISocketResponse } from "./interfaces/response";
+import { IRoomCreated, IRoomJoined, ISocketResponse } from "./interfaces/response";
 
 const app = express();
 const httpServer = app.listen(8080)
@@ -43,21 +43,32 @@ wss.on("connection", function connection(ws: CustomWebSocket) {
                         message: "No room Id Provided."
                     }
                     ws.send(JSON.stringify(response));
+                    return;
                 }
                 //try to search if roomId Exists or not
                 const room: Set<CustomWebSocket> | undefined = rooms.get(roomId ?? "")
-
                 if (!room) {
                     const response: ISocketResponse<null> = {
-                        type: "roomCreated",
+                        type: "error",
                         data: null,
                         message: "Invalid Room Id.",
                         error: "Provide a valid Room Id."
                     }
                     ws.send(JSON.stringify(response));
+                    return;
                 }
-
-
+                //if we get room just add the client ws to that room
+                ws.username = res.username;
+                ws.roomId = roomId
+                room.add(ws)
+                const response: ISocketResponse<IRoomJoined> = {
+                    type: "roomJoined",
+                    data: {
+                        roomId: roomId
+                    },
+                    message: "Room Joined Successfully"
+                }
+                ws.send(JSON.stringify(response));
             } else if (res.type == "chat") {
                 //broadcast the message
             }
