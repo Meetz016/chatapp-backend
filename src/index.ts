@@ -13,6 +13,7 @@ const rooms = new Map<string, Set<CustomWebSocket>>()
 
 
 wss.on("connection", function connection(ws: CustomWebSocket) {
+    console.log("new user here...")
     ws.on("error", console.error)
 
     ws.on("message", function message(data: string, isBinary) {
@@ -69,6 +70,18 @@ wss.on("connection", function connection(ws: CustomWebSocket) {
                     message: "Room Joined Successfully"
                 }
                 ws.send(JSON.stringify(response));
+
+                room.forEach(client => {
+                    if (client !== ws && client.readyState === WebSocket.OPEN) {
+                        const joinedMessage: ISocketResponse<{ username: string }> = {
+                            type: "userJoined",
+                            data: { username: ws.username },
+                            message: `${ws.username} has joined the room`
+                        };
+                        client.send(JSON.stringify(joinedMessage)); // Sent to others in room ✅
+                    }
+                });
+
             } else if (res.type == "chat") {
                 //broadcast the message
                 const roomId = ws.roomId;
