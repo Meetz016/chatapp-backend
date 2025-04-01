@@ -13,7 +13,6 @@ const rooms = new Map<string, Set<CustomWebSocket>>()
 
 
 wss.on("connection", function connection(ws: CustomWebSocket) {
-    console.log("new user here...")
     ws.on("error", console.error)
 
     ws.on("message", function message(data: string, isBinary) {
@@ -72,16 +71,16 @@ wss.on("connection", function connection(ws: CustomWebSocket) {
                 ws.send(JSON.stringify(response));
 
                 room.forEach(client => {
-                    if (client !== ws && client.readyState === WebSocket.OPEN) {
-                        const joinedMessage: ISocketResponse<{ username: string }> = {
+                    if (client.readyState === WebSocket.OPEN) {
+                        const allUsers: string[] = Array.from(room.values()).map(client => client.username)
+                        const joinedMessage: ISocketResponse<{ username: string, allUsers: string[] }> = {
                             type: "userJoined",
-                            data: { username: ws.username },
+                            data: { username: ws.username, allUsers: allUsers },
                             message: `${ws.username} has joined the room`
                         };
-                        client.send(JSON.stringify(joinedMessage)); // Sent to others in room ✅
+                        client.send(JSON.stringify(joinedMessage));
                     }
                 });
-
             } else if (res.type == "chat") {
                 //broadcast the message
                 const roomId = ws.roomId;
@@ -144,4 +143,37 @@ wss.on("connection", function connection(ws: CustomWebSocket) {
 
         }
     })
+
+    ws.on("close", () => {
+        const roomId = ws.roomId;
+
+        if (!roomId) {
+            const response: ISocketResponse<null> = {
+                type: "error",
+                data: null,
+                message: "You are not in a room.",
+            };
+            ws.send(JSON.stringify(response));
+            return;
+        }
+        const room: Set<CustomWebSocket> | undefined = rooms.get(roomId ?? "")
+
+        if (!room) return;
+
+        room.delete(ws)
+
+        room.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                const allUsers: string[] = Array.from(room.values()).map(client => client.username)
+                const joinedMessage: ISocketResponse<{ username: string, allUsers: string[] }> = {
+                    type: "userLeft",
+                    data: { username: ws.username, allUsers: allUsers },
+                    message: `${ws.username} has left the room`
+                };
+                client.send(JSON.stringify(joinedMessage));
+            }
+        });
+
+    })
+
 })
